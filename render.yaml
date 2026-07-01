@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: chat-backend
+    env: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: "cd backend && npm install"
+    startCommand: "cd backend && npm start"
+    envVars:
+      - key: MONGODB_URI
+        value: "${MONGODB_URI}"
+      - key: JWT_SECRET
+        value: "${JWT_SECRET}"
+      - key: NODE_ENV
+        value: "production"
