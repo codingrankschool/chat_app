@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import './App.css';
@@ -27,6 +27,7 @@ function App() {
   });
   const [token, setToken] = useState(localStorage.getItem('chatToken') || '');
   const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
 
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
@@ -58,11 +59,15 @@ function App() {
 
   useEffect(() => {
     if (!token) {
-      if (socket) {
-        socket.disconnect();
-      }
+      socketRef.current?.disconnect();
+      socketRef.current = null;
       setSocket(null);
       return;
+    }
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
     }
 
     const client = io(SOCKET_URL, {
@@ -70,12 +75,16 @@ function App() {
       auth: { token }
     });
 
+    socketRef.current = client;
     setSocket(client);
 
     return () => {
+      if (socketRef.current === client) {
+        socketRef.current = null;
+      }
       client.disconnect();
     };
-  }, [socket, token]);
+  }, [token]);
 
   useEffect(() => {
     if (!socket) return;
