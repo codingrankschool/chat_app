@@ -11,6 +11,8 @@ const buildDmRoomName = (userA, userB) => {
   return `dm:${names.join('_')}`;
 };
 
+const normalizeRoomId = (roomId) => (roomId ? String(roomId) : '');
+
 const formatRoomLabel = (room) => {
   if (!room) return '';
   if (!room.roomName.startsWith('dm:')) return room.roomName;
@@ -73,7 +75,7 @@ function App() {
     return () => {
       client.disconnect();
     };
-  }, [socket, token]);
+  }, [token]);
 
   useEffect(() => {
     if (!socket) return;
@@ -228,41 +230,48 @@ function App() {
   const handleJoinRoom = async (room) => {
     if (!socket) return;
 
-    setSelectedRoom(room);
-    setMessages([]);
-    setStatusMessage(`Joined ${formatRoomLabel(room)}`);
-    await fetchMessages(room._id);
+    const roomId = normalizeRoomId(room._id);
+    const normalizedRoom = { ...room, _id: roomId };
 
-    socket.emit('join-room', { roomId: room._id });
+    setSelectedRoom(normalizedRoom);
+    setMessages([]);
+    setStatusMessage(`Joined ${formatRoomLabel(normalizedRoom)}`);
+    await fetchMessages(roomId);
+
+    socket.emit('join-room', { roomId });
   };
 
   const handleSendMessage = (event) => {
     event.preventDefault();
     if (!messageText.trim() || !selectedRoom || !socket) return;
 
+    const roomId = normalizeRoomId(selectedRoom._id);
+
     socket.emit('send-message', {
-      roomId: selectedRoom._id,
+      roomId,
       message: messageText.trim()
     });
 
     setMessageText('');
-    socket.emit('stop-typing', { roomId: selectedRoom._id });
+    socket.emit('stop-typing', { roomId });
   };
 
   const handleTyping = (value) => {
     setMessageText(value);
     if (!selectedRoom || !socket) return;
 
+    const roomId = normalizeRoomId(selectedRoom._id);
+
     if (value.trim()) {
-      socket.emit('typing', { roomId: selectedRoom._id });
+      socket.emit('typing', { roomId });
     } else {
-      socket.emit('stop-typing', { roomId: selectedRoom._id });
+      socket.emit('stop-typing', { roomId });
     }
   };
 
   const leaveRoom = () => {
     if (socket && selectedRoom) {
-      socket.emit('leave-room', { roomId: selectedRoom._id });
+      socket.emit('leave-room', { roomId: normalizeRoomId(selectedRoom._id) });
     }
 
     setSelectedRoom(null);
