@@ -73,7 +73,7 @@ function App() {
     return () => {
       client.disconnect();
     };
-  }, [token]);
+  }, [socket, token]);
 
   useEffect(() => {
     if (!socket) return;
@@ -118,8 +118,18 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
-    fetchRooms();
-  }, [token]);
+
+    const loadRooms = async () => {
+      try {
+        const response = await axiosInstance.get('/rooms');
+        setRooms(response.data.rooms || []);
+      } catch (error) {
+        console.error('Failed to load rooms:', error);
+      }
+    };
+
+    loadRooms();
+  }, [axiosInstance, token]);
 
   const fetchRooms = async () => {
     try {
