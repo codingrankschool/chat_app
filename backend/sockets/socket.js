@@ -1,6 +1,8 @@
 const Message = require("../models/message.model");
 const jwt = require("jsonwebtoken");
 
+const normalizeRoomId = (roomId) => String(roomId ?? "").trim();
+
 const socketHandler = (io) => {
 
     io.use((socket, next) => {
@@ -32,13 +34,21 @@ const socketHandler = (io) => {
 
         socket.on("join-room", ({ roomId }) => {
 
-            socket.join(roomId);
+            const nextRoomId = normalizeRoomId(roomId);
 
-            socket.roomId = roomId;
+            if (!nextRoomId) return;
 
-            console.log(`${socket.user.username} joined ${roomId}`);
+            if (socket.roomId && socket.roomId !== nextRoomId) {
+                socket.leave(socket.roomId);
+            }
 
-            socket.to(roomId).emit("user-joined", {
+            socket.join(nextRoomId);
+
+            socket.roomId = nextRoomId;
+
+            console.log(`${socket.user.username} joined ${nextRoomId}`);
+
+            socket.to(nextRoomId).emit("user-joined", {
                 username: socket.user.username,
                 message: `${socket.user.username} joined the room`
             });
@@ -53,7 +63,11 @@ const socketHandler = (io) => {
 
         socket.on("typing", ({ roomId }) => {
 
-            socket.to(roomId).emit("typing", {
+            const nextRoomId = normalizeRoomId(roomId);
+
+            if (!nextRoomId) return;
+
+            socket.to(nextRoomId).emit("typing", {
                 username: socket.user.username
             });
 
@@ -67,7 +81,11 @@ const socketHandler = (io) => {
 
         socket.on("stop-typing", ({ roomId }) => {
 
-            socket.to(roomId).emit("stop-typing");
+            const nextRoomId = normalizeRoomId(roomId);
+
+            if (!nextRoomId) return;
+
+            socket.to(nextRoomId).emit("stop-typing");
 
         });
 
@@ -81,13 +99,16 @@ const socketHandler = (io) => {
 
             try {
 
+                const roomId = normalizeRoomId(data?.roomId);
+                if (!roomId || !data?.message) return;
+
                 const newMessage = await Message.create({
-                    roomId: data.roomId,
+                    roomId,
                     sender: socket.user.username,
                     message: data.message
                 });
 
-                io.to(data.roomId).emit("receive-message", newMessage);
+                io.to(roomId).emit("receive-message", newMessage);
 
             } catch (error) {
 
@@ -98,9 +119,11 @@ const socketHandler = (io) => {
         });
 
         socket.on("leave-room", ({ roomId }) => {
-            if (roomId) {
-                socket.leave(roomId);
-                socket.to(roomId).emit("user-left", {
+            const nextRoomId = normalizeRoomId(roomId);
+
+            if (nextRoomId) {
+                socket.leave(nextRoomId);
+                socket.to(nextRoomId).emit("user-left", {
                     username: socket.user.username,
                     message: `${socket.user.username} left the room`
                 });
