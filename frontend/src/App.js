@@ -75,7 +75,7 @@ function App() {
     return () => {
       client.disconnect();
     };
-  }, [token]);
+  }, [socket, token]);
 
   useEffect(() => {
     if (!socket) return;
